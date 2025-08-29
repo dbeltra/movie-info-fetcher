@@ -3,3 +3,5 @@ venv
 .venv
 input.csv
 output.csv
+__pycache__
+*.pyc
