@@ -1,0 +1,5 @@
+.vscode
+venv
+.venv
+input.csv
+output.csv
