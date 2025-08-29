@@ -173,7 +173,12 @@ def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool 
                 
                 # Search for related films if needed
                 if needs_related:
-                    related_movies = get_director_popular_movies(movie_director, limit=3, verbose=verbose)
+                    related_movies = get_director_popular_movies(
+                        movie_director, 
+                        current_movie_title=movie_title,
+                        limit=3, 
+                        verbose=verbose
+                    )
                     if related_movies:
                         formatted_related = format_related_films(related_movies)
                         row[related_films_col] = formatted_related

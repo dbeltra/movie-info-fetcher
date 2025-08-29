@@ -6,7 +6,7 @@ Automatically find and add YouTube trailer links to your movie CSV files. This C
 
 - **Smart Column Detection**: Automatically finds title, director, and year columns
 - **YouTube Integration**: Finds official movie trailers automatically
-- **TMDb Integration**: Discovers director's 3 most popular films
+- **TMDb Integration**: Discovers director's 3 most popular films (handles multiple directors)
 - **Flexible CSV Support**: Works with any delimiter (comma, semicolon, etc.)
 - **Safe Processing**: Only adds data where none exists (won't overwrite)
 - **Progress Tracking**: Beautiful progress bars and detailed logging
@@ -135,7 +135,7 @@ python parser.py movies.csv --no-related
 3. **Column Management**: Creates trailer and related films columns if needed
 4. **Smart Processing**: Only processes movies without existing data
 5. **YouTube Search**: Constructs optimized search queries for trailers
-6. **TMDb Lookup**: Finds director's most popular films via API
+6. **TMDb Lookup**: Finds director's most popular films via API (supports multiple directors)
 7. **Safe Updates**: Writes results back to the original file
 
 ### Search Strategy
@@ -150,6 +150,21 @@ This approach:
 - Includes director for better accuracy
 - Uses date filtering to find relevant results
 - Prioritizes official trailers over fan content
+
+### Multiple Directors
+
+The tool intelligently handles multiple directors in various formats:
+- `Director A & Director B`
+- `Director A, Director B & Director C`
+- `Director A and Director B`
+- `Director A / Director B`
+- `Director A + Director B`
+
+When multiple directors are found, it searches for each director's popular films and combines the results.
+
+### Smart Exclusions
+
+The tool automatically excludes the current movie from its own related films list, ensuring you get genuinely different recommendations. It also respects existing data - if a movie already has related films listed, it won't overwrite them.
 
 ## ⚙️ Configuration
 
