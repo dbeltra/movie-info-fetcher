@@ -8,7 +8,7 @@ from core.processor import update_csv_with_trailers
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure the argument parser"""
     parser = argparse.ArgumentParser(
-        description="🎬 Movie Trailer Finder - Automatically add YouTube trailer links to movie CSV files",
+        description="🎬 Movie Trailer Finder - Automatically add YouTube trailer links and related films to movie CSV files",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -21,9 +21,12 @@ Examples:
 The tool automatically detects:
   - CSV delimiter (comma, semicolon, etc.)
   - Title, Director, Year columns (flexible matching)
-  - Existing Trailer column or creates one
+  - Existing Trailer and Related films columns or creates them
 
-Only processes movies without existing trailer links.
+Features:
+  - YouTube trailer search
+  - TMDb integration for director's popular films
+  - Only processes missing data (won't overwrite existing content)
         """
     )
     
@@ -58,6 +61,12 @@ Only processes movies without existing trailer links.
     )
     
     parser.add_argument(
+        '--no-related',
+        action='store_true',
+        help='Skip adding related films from TMDb'
+    )
+    
+    parser.add_argument(
         '--version',
         action='version',
         version='Movie Trailer Finder 1.0.0'
@@ -80,5 +89,6 @@ def main():
         delay=args.delay,
         verbose=args.verbose,
         dry_run=args.dry_run,
-        force=args.force
+        force=args.force,
+        include_related=not args.no_related
     )

@@ -17,15 +17,16 @@ def detect_delimiter(file_path: str) -> str:
             return ';'
 
 
-def find_column_indices(header: list) -> Tuple[Optional[int], Optional[int], Optional[int], Optional[int]]:
-    """Find column indices for title, director, year, and trailer columns."""
-    title_col = director_col = year_col = trailer_col = None
+def find_column_indices(header: list) -> Tuple[Optional[int], Optional[int], Optional[int], Optional[int], Optional[int]]:
+    """Find column indices for title, director, year, trailer, and related films columns."""
+    title_col = director_col = year_col = trailer_col = related_films_col = None
     
     # More flexible column matching
     title_keywords = ['title', 'movie', 'film', 'name']
     director_keywords = ['director', 'directed', 'filmmaker']
     year_keywords = ['year', 'date', 'released']
     trailer_keywords = ['trailer', 'link', 'url', 'video']
+    related_keywords = ['related', 'films', 'movies', 'other', 'similar']
     
     for i, col_name in enumerate(header):
         col_lower = col_name.lower().strip()
@@ -38,5 +39,7 @@ def find_column_indices(header: list) -> Tuple[Optional[int], Optional[int], Opt
             year_col = i
         elif trailer_col is None and any(keyword in col_lower for keyword in trailer_keywords):
             trailer_col = i
+        elif related_films_col is None and any(keyword in col_lower for keyword in related_keywords):
+            related_films_col = i
     
-    return title_col, director_col, year_col, trailer_col
+    return title_col, director_col, year_col, trailer_col, related_films_col

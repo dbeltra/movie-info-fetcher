@@ -1,6 +1,7 @@
 .vscode
 venv
 .venv
+.env
 input.csv
 output.csv
 __pycache__

@@ -5,11 +5,13 @@ Automatically find and add YouTube trailer links to your movie CSV files. This C
 ## ✨ Features
 
 - **Smart Column Detection**: Automatically finds title, director, and year columns
+- **YouTube Integration**: Finds official movie trailers automatically
+- **TMDb Integration**: Discovers director's 3 most popular films
 - **Flexible CSV Support**: Works with any delimiter (comma, semicolon, etc.)
-- **Safe Processing**: Only adds trailers where none exist
+- **Safe Processing**: Only adds data where none exists (won't overwrite)
 - **Progress Tracking**: Beautiful progress bars and detailed logging
 - **Dry Run Mode**: Preview changes before applying them
-- **Rate Limiting**: Built-in delays to respect YouTube's limits
+- **Rate Limiting**: Built-in delays to respect API limits
 
 ## 🚀 Quick Start
 
@@ -30,11 +32,19 @@ python parser.py movies.csv --delay 1.0
 ## 📋 Requirements
 
 - Python 3.7+
-- `requests` library
+- Required libraries: `requests`, `python-dotenv`, `tmdbv3api`
+- TMDb API key (free from [themoviedb.org](https://www.themoviedb.org/settings/api))
 
 Install dependencies:
 ```bash
-pip install requests
+pip install -r requirements.txt
+# or individually:
+pip install requests python-dotenv tmdbv3api
+```
+
+Create a `.env` file with your TMDb API key:
+```
+TMDB_API_KEY="your_api_key_here"
 ```
 
 ## 📊 CSV Format
@@ -44,7 +54,9 @@ Your CSV file should contain columns for:
 - **Director** (director, filmmaker, directed)
 - **Year** (year, date, released)
 
-The tool will automatically detect these columns regardless of their exact names or order.
+The tool will automatically detect these columns and optionally add:
+- **Trailer** - YouTube trailer links
+- **Related films** - Director's 3 most popular movies from TMDb
 
 ### Example CSV Structure
 
@@ -56,9 +68,9 @@ Panorama;Abraham's Boys;Natasha Kermani;2025
 
 After processing:
 ```csv
-Section;Title;Director;Year;Trailer
-Panorama;13 Days Till Summer;Bartosz M. Kowalski;2025;https://www.youtube.com/watch?v=abc123
-Panorama;Abraham's Boys;Natasha Kermani;2025;https://www.youtube.com/watch?v=def456
+Section;Title;Director;Year;Trailer;Related films
+Panorama;13 Days Till Summer;Bartosz M. Kowalski;2025;https://www.youtube.com/watch?v=abc123;Film A | Film B | Film C
+Panorama;Abraham's Boys;Natasha Kermani;2025;https://www.youtube.com/watch?v=def456;Movie X | Movie Y | Movie Z
 ```
 
 ## 🛠 Usage
@@ -77,6 +89,7 @@ Options:
   -v, --verbose          Show detailed progress
   -n, --dry-run          Preview without making changes
   -f, --force            Skip confirmation prompts
+  --no-related           Skip adding related films from TMDb
   --version              Show version information
 ```
 
@@ -94,6 +107,9 @@ python parser.py large_dataset.csv --force --delay 0.5
 
 # Detailed logging for troubleshooting
 python parser.py problematic.csv --verbose
+
+# Only add trailers, skip related films
+python parser.py movies.csv --no-related
 ```
 
 ## 🏗 Project Structure
@@ -116,10 +132,11 @@ python parser.py problematic.csv --verbose
 
 1. **File Validation**: Checks if the CSV file exists and is readable
 2. **Column Detection**: Automatically identifies title, director, year columns
-3. **Trailer Column**: Creates a trailer column if it doesn't exist
-4. **Smart Processing**: Only processes movies without existing trailers
-5. **YouTube Search**: Constructs optimized search queries for each movie
-6. **Safe Updates**: Writes results back to the original file
+3. **Column Management**: Creates trailer and related films columns if needed
+4. **Smart Processing**: Only processes movies without existing data
+5. **YouTube Search**: Constructs optimized search queries for trailers
+6. **TMDb Lookup**: Finds director's most popular films via API
+7. **Safe Updates**: Writes results back to the original file
 
 ### Search Strategy
 
@@ -158,6 +175,7 @@ The tool recognizes these column name patterns:
 | Director  | director, directed, filmmaker |
 | Year      | year, date, released |
 | Trailer   | trailer, link, url, video |
+| Related   | related, films, movies, other, similar |
 
 ## 🚨 Error Handling
 

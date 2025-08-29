@@ -8,10 +8,11 @@ from time import sleep
 from utils.colors import print_colored, print_progress_bar, Colors
 from csv_handler.parser import detect_delimiter, find_column_indices
 from search.youtube import search_youtube
+from search.tmdb import get_director_popular_movies, format_related_films, test_tmdb_connection
 
 
 def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool = False, 
-                           dry_run: bool = False, force: bool = False) -> None:
+                           dry_run: bool = False, force: bool = False, include_related: bool = True) -> None:
     """Main function to update CSV with trailer links"""
     
     # Validate input file
@@ -24,6 +25,15 @@ def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool 
     
     print_colored(f"🎬 Movie Trailer Finder", Colors.BOLD)
     print_colored(f"📁 Processing file: {input_file}", Colors.BLUE)
+    
+    # Test TMDb connection if related films are requested
+    if include_related:
+        if test_tmdb_connection():
+            if verbose:
+                print_colored(f"✅ TMDb API connection successful", Colors.GREEN)
+        else:
+            print_colored(f"⚠️  TMDb API unavailable - skipping related films", Colors.YELLOW)
+            include_related = False
     
     try:
         # Auto-detect delimiter
@@ -39,7 +49,7 @@ def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool 
             rows = list(reader)
         
         # Find column indices
-        title_col, director_col, year_col, trailer_col = find_column_indices(header)
+        title_col, director_col, year_col, trailer_col, related_films_col = find_column_indices(header)
         
         # Validate required columns
         missing_cols = []
@@ -71,6 +81,22 @@ def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool 
             for row in rows:
                 row.append("")
         
+        # Add related films column if it doesn't exist and TMDb is available
+        related_films_added = False
+        if include_related and related_films_col is None:
+            if not force and not dry_run:
+                response = input(f"Add 'Related films' column to the file? (y/N): ")
+                if response.lower() not in ['y', 'yes']:
+                    include_related = False
+            
+            if include_related:
+                header.append("Related films")
+                related_films_col = len(header) - 1
+                related_films_added = True
+                # Extend existing rows with empty related films field
+                for row in rows:
+                    row.append("")
+        
         # Display column mapping
         print_colored(f"📊 Column mapping:", Colors.GREEN)
         print(f"  Title: {header[title_col]} (column {title_col + 1})")
@@ -78,25 +104,26 @@ def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool 
         print(f"  Year: {header[year_col]} (column {year_col + 1})")
         print(f"  Trailer: {header[trailer_col]} (column {trailer_col + 1})" + 
               (" - NEW" if trailer_added else ""))
+        if include_related and related_films_col is not None:
+            print(f"  Related films: {header[related_films_col]} (column {related_films_col + 1})" + 
+                  (" - NEW" if related_films_added else ""))
         
         total_rows = len(rows)
         processed = 0
         skipped = 0
         found = 0
+        related_found = 0
         
         print_colored(f"\n🔍 Processing {total_rows} movies...", Colors.BLUE)
         
         for i, row in enumerate(rows):
             # Ensure row has enough columns
-            while len(row) <= max(title_col, director_col, year_col, trailer_col):
-                row.append("")
+            max_col = max(title_col, director_col, year_col, trailer_col)
+            if include_related and related_films_col is not None:
+                max_col = max(max_col, related_films_col)
             
-            # Skip if trailer already exists and is not empty
-            if row[trailer_col] and row[trailer_col].strip():
-                if verbose:
-                    print_colored(f"  ⏭️  Skipping: {row[title_col]} (trailer exists)", Colors.YELLOW)
-                skipped += 1
-                continue
+            while len(row) <= max_col:
+                row.append("")
             
             movie_title = row[title_col]
             movie_director = row[director_col]
@@ -108,23 +135,53 @@ def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool 
                 skipped += 1
                 continue
             
+            # Check what needs to be processed
+            needs_trailer = not (row[trailer_col] and row[trailer_col].strip())
+            needs_related = (include_related and related_films_col is not None and 
+                           not (row[related_films_col] and row[related_films_col].strip()))
+            
+            if not needs_trailer and not needs_related:
+                if verbose:
+                    print_colored(f"  ⏭️  Skipping: {movie_title} (all data exists)", Colors.YELLOW)
+                skipped += 1
+                continue
+            
             if verbose:
-                print_colored(f"  🎯 Searching: {movie_title} ({movie_year})", Colors.BLUE)
+                tasks = []
+                if needs_trailer:
+                    tasks.append("trailer")
+                if needs_related:
+                    tasks.append("related films")
+                print_colored(f"  🎯 Processing: {movie_title} ({movie_year}) - {', '.join(tasks)}", Colors.BLUE)
             else:
                 print_progress_bar(i + 1, total_rows)
 
             if not dry_run:
-                trailer_link = search_youtube(
-                    f"{movie_title} +movie +trailer {movie_director} after:{int(movie_year) - 1}-01-01",
-                    verbose=verbose
-                )
-                if trailer_link:
-                    if verbose:
-                        print_colored(f"  ✅ Found: {trailer_link}", Colors.GREEN)
-                    row[trailer_col] = trailer_link
-                    found += 1
-                else:
-                    row[trailer_col] = ""
+                # Search for trailer if needed
+                if needs_trailer:
+                    trailer_link = search_youtube(
+                        f"{movie_title} +movie +trailer {movie_director} after:{int(movie_year) - 1}-01-01",
+                        verbose=verbose
+                    )
+                    if trailer_link:
+                        if verbose:
+                            print_colored(f"  ✅ Found trailer: {trailer_link}", Colors.GREEN)
+                        row[trailer_col] = trailer_link
+                        found += 1
+                    else:
+                        row[trailer_col] = ""
+                
+                # Search for related films if needed
+                if needs_related:
+                    related_movies = get_director_popular_movies(movie_director, limit=3, verbose=verbose)
+                    if related_movies:
+                        formatted_related = format_related_films(related_movies)
+                        row[related_films_col] = formatted_related
+                        related_found += 1
+                        if verbose:
+                            print_colored(f"  🎬 Related films: {formatted_related}", Colors.GREEN)
+                    else:
+                        row[related_films_col] = ""
                 
                 sleep(delay)
             
@@ -146,6 +203,8 @@ def update_csv_with_trailers(input_file: str, delay: float = 2.0, verbose: bool 
         print(f"  Processed: {processed}")
         print(f"  Skipped: {skipped}")
         print(f"  Trailers found: {found}")
+        if include_related:
+            print(f"  Related films found: {related_found}")
         
         if dry_run:
             print_colored(f"🔍 Dry run complete - no changes made", Colors.YELLOW)
